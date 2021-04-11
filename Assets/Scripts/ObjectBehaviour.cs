@@ -6,85 +6,73 @@ public class ObjectBehaviour : MonoBehaviour
 {
     //drags
     public GameObject underWaterObj;
+    private Rigidbody objectRB;      //The objects rigidbody
+    private Mesh underWaterMesh; //Mesh for debugging //REMOVE?
 
-    //The density of the water the boat is traveling in
-    private float SeaWaterDensity = 1027f;
+    private ModifyUnderwaterMesh modifyUnderwaterMesh; //calling script that finds underwater triangles
 
-    //The objects rigidbody
-    private Rigidbody ObjectRB;
 
-    //Mesh for debugging
-    private Mesh underWaterMesh;
+    //Densities of the fluid the object is falling in: (from: https://physics.info/density/)
+    private float seaWaterDensity = 1025f;
+    //private float honeyDensity    = 1420f;
+    //private float cowMilkDensity  = 994f; //heavy cream
+    //private float mercury         = 13594f;   
+        
 
-    //Script that's doing everything needed with the boat mesh, such as finding out which part is above the water
-    private ModifyUnderwaterMesh modifyUnderwaterMesh;
-
-    // Start is called before the first frame update
     void Start()
     {
-        //Get the obj's rigidbody thanks to unity.
-        ObjectRB = gameObject.GetComponent<Rigidbody>();
-
-        //Init the script that will modify the obj mesh
-        modifyUnderwaterMesh = new ModifyUnderwaterMesh(gameObject);
-        
-        //Meshes that are below and above the water
-        underWaterMesh = underWaterObj.GetComponent<MeshFilter>().mesh;
-
+        //Get the obj's rigidbody thanks to unity //REMOVE? comment
+        objectRB = gameObject.GetComponent<Rigidbody>();
+        modifyUnderwaterMesh = new ModifyUnderwaterMesh(gameObject); //the script will modify the obj mesh
+        underWaterMesh = underWaterObj.GetComponent<MeshFilter>().mesh; //the mesh for underwater //REMOVE?
     }
 
-    // Update is called once per frame
     void Update()
     {
-        //Make the under water mesh
         modifyUnderwaterMesh.MakeUnderwaterMesh();
-        // Display the under water mesh
+        //Show the underwater mesh //REMOVE? (I feel like this doesn't work?)
         modifyUnderwaterMesh.DisplayMesh(underWaterMesh, "UnderWater Mesh", modifyUnderwaterMesh.underwaterTriangles);
     }
 
-    //Update per time step instead of frame (better for physics calculations since you dont want weird stuff based on frame rate)   TODO: IN ifstatement non CtrlC + CtrlV like maken.
+    //Update per time step instead of frame (better for physics calculations since you dont want weird stuff based on frame rate)   
+    //TODO: IN ifstatement non CtrlC + CtrlV like maken.
     void FixedUpdate()
     {
-        if (modifyUnderwaterMesh.underwaterTriangles.Count > 0)
-        {
-            //Get all triangles
-            List<Triangle> underwaterTriangles = modifyUnderwaterMesh.underwaterTriangles;
+        List<Triangle> underwaterTriangles = modifyUnderwaterMesh.underwaterTriangles;
 
+        //If object below (or partially below) water, apply buoyancy
+        if (underwaterTriangles.Count > 0)
+        {           
             for (int i = 0; i < underwaterTriangles.Count; i++)
             {
-                //This triangle
                 Triangle triangle = underwaterTriangles[i];
+                //Calculate buoyancy
+                Vector3 buoyancy = BuoyancyFunc(seaWaterDensity, triangle);
 
-                //Calculate the buoyancy force
-                Vector3 buoyancyForce = BuoyancyForce(SeaWaterDensity, triangle);
+                //Add the buoyancy to the object
+                objectRB.AddForceAtPosition(buoyancy, triangle.center);
 
-                //Add the force to the boat
-                ObjectRB.AddForceAtPosition(buoyancyForce, triangle.center);
-
-
-                //Debug
-
-                //Normal
-                Debug.DrawRay(triangle.center, triangle.normal * 3f, Color.white);
-
-                //Buoyancy
-                Debug.DrawRay(triangle.center, buoyancyForce.normalized * -3f, Color.blue);
+                //REMOVE? Below? 
+                //Debug                
+                Debug.DrawRay(triangle.center, triangle.normal * 3f, Color.white); //Normal                
+                Debug.DrawRay(triangle.center, buoyancy.normalized * -3f, Color.blue); //Buoyancy
             }
         }
     }
 
 
-    private Vector3 BuoyancyForce(float rho, Triangle triangle)
+    private Vector3 BuoyancyFunc(float density, Triangle triangle)
     {
-        //Buoyancy is a hydrostatic force - it's there even if the water isn't flowing or if the boat stays still
+        //Buoyancy = density*g*V 
+        //V = fluid volume = TODO (can't find the formula)
 
-        // F_buoyancy = rho * g * V
-        Vector3 buoyancyForce = rho * Physics.gravity.y * (triangle.distanceToSurface * triangle.area * triangle.normal);
+        Vector3 V = triangle.distanceToSurface * triangle.area * triangle.normal;
+        Vector3 buoyancy = density * Physics.gravity.y * V;
 
-        //The vertical component of the hydrostatic forces don't cancel out but the horizontal do
-        buoyancyForce.x = 0f;
-        buoyancyForce.z = 0f;
+        //The x and z forces of the buoyancy cancel out, as we only care about the vertical force
+        buoyancy.x = 0f;
+        buoyancy.z = 0f;
 
-        return buoyancyForce;
+        return buoyancy;
     }
 }

@@ -2,21 +2,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-//Controlls the water
 public class WaterController : MonoBehaviour
 {
-    public static WaterController current;
+    public static WaterController currentWC;
 
     void Start()
     {
-        current = this;
+        currentWC = this;
     }
 
-    //Positive if above water, Negative if below 
+    //0> above water surface, 0< below water surface
     public float DistanceToWater(Vector3 pos)
     {
         float distanceToWater = pos.y;
-
         return distanceToWater;
     }
 }
