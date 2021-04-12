@@ -4,17 +4,17 @@ using UnityEngine;
 
 public class ModifyUnderwaterMesh
 {
-    private Transform objTrans;              //the object transform to get the world position of a vertice
     Vector3[] objVertices;                   //coordinates of the vertices in the object
-    int[] objTriangles;                      //the indexes of the positions of the triangles    TODO: //Positions in allVerticesArray, such as 0, 3, 5, to build triangles ??????
-    public Vector3[] objVerticesWorld;       //coordinates of the vertices in the world positions of the object //REMOVE? (or objVertices)
-    float[] allDistancesToWater;             //list of all the distances to the water //REMOVE?
-    public List<Triangle> underwaterTriangles = new List<Triangle>(); //all triangles that are under water
+    public Vector3[] objVerticesWorld;       //coordinates of the vertices in the world positions of the object 
+    private Transform objTrans;              //the object transform to get the world position of a vertice
+    int[] objTriangles;                      //the indexes of the positions of the triangles   
+    public List<Triangle> underwaterTriangles = new List<Triangle>(); //all triangles that are under water    
+    float[] allDistancesToWater;             //list of all the distances to the water 
     public bool swap;                        //bool to check if swap in vertexdata has occured (to sort distance list)
 
     public ModifyUnderwaterMesh(GameObject obj)
     {
-        objTrans = obj.transform;   
+        objTrans = obj.transform;
 
         //fill the arrays with the initial vertices / triangles of the object
         objVertices = obj.GetComponent<MeshFilter>().mesh.vertices;
@@ -23,49 +23,40 @@ public class ModifyUnderwaterMesh
         allDistancesToWater = new float[objVertices.Length];
     }
 
-    public void MakeUnderwaterMesh()
+    public void CreateTrianglesUnderwater()
     {
-        underwaterTriangles.Clear();  //Clear Underwater triangle list (since loop and we don't want to add more and more meshes) //REMOVE? comment
+        underwaterTriangles.Clear();  //Clear Underwater triangle list (since loop and we don't want to add more and more meshes)
 
+        List<VertexD> vertexData = new List<VertexD>();
+        //create empty places in vertexData to fill
+        vertexData.Add(new VertexD());
+        vertexData.Add(new VertexD());
+        vertexData.Add(new VertexD());
 
         //safe the distance to water of the vertices (note that a triangle sometimes uses the same vertice)
         for (int i = 0; i < objVertices.Length; i++)
         {
             objVerticesWorld[i] = objTrans.TransformPoint(objVertices[i]);
-            allDistancesToWater[i] = WaterController.currentWC.DistanceToWater(objTrans.TransformPoint(objVertices[i]));
+            allDistancesToWater[i] = objTrans.TransformPoint(objVertices[i]).y;
         }
 
-        //Create the triangles below the water so we can create a mesh.
-        CreateTrianglesUnderwater();
-    }
+        //--| Create the triangles below the water |--         
 
-    //creating a vertexD object that can hold the data we need in a list. 
-    private class VertexD
-    {        
-        public float distance;          //distance to water 
-        public int index;               //index, needed to keep the correct triangles
-        public Vector3 worldVertexPos;  
-    }
-
-    private void CreateTrianglesUnderwater()
-    {
-        List<VertexD> vertexData = new List<VertexD>(3); //TODO: check if (3) works
-
-        int i = 0;
+        int k = 0;
         //go through all the object triangles
-        while (i < objTriangles.Length)
+        while (k < objTriangles.Length)
         {
             //go through the 3 points of the triangle
             for (int x = 0; x < 3; x++)
             {
-                vertexData[x].distance = allDistancesToWater[objTriangles[i]];
+                vertexData[x].distance = allDistancesToWater[objTriangles[k]];
                 vertexData[x].index = x;
-                vertexData[x].worldVertexPos = objVerticesWorld[objTriangles[i]];
-                i++;
+                vertexData[x].worldVertexPos = objVerticesWorld[objTriangles[k]];
+                k++;
             }
 
             //--| Check where the vertices of the triangle are located (in water, outside water etc) |--
-            
+
             //All vertices above fluid
             if (vertexData[0].distance > 0f && vertexData[1].distance > 0f && vertexData[2].distance > 0f)
             {
@@ -109,6 +100,14 @@ public class ModifyUnderwaterMesh
         }
     }
 
+    //creating a vertexD object that can hold the data we need in a list. 
+    private class VertexD
+    {
+        public float distance;          //distance to water 
+        public int index;               //index, needed to keep the correct triangles
+        public Vector3 worldVertexPos;
+    }
+
     /*AddTrianglesPartiallyInWater handles the triangles with formulas from the website: https://gamasutra.com/view/news/237528/Water_interaction_model_for_boats_in_video_games.php
       Based on if the triangle has 1 or 2 vertices above water we will have to change the formula.*/
     private void AddTrianglesPartiallyInWater(List<VertexD> vertexData, int aboveVertices)
@@ -132,8 +131,8 @@ public class ModifyUnderwaterMesh
             //Since we need the triangle to be turned the same way we can't use the distance to surface for M and L but instead have to use the triangular index.
             int M_index = vertexData[0].index - 1;
             if (M_index < 0)
-            {   M_index = 2;   }                     
-            
+            { M_index = 2; }
+
             //fill M and L according to M_index (if vertexdata[1] = M index it is M, else vertexdata[2] = M)
             if (vertexData[1].index == M_index)
             {
@@ -149,7 +148,7 @@ public class ModifyUnderwaterMesh
                 hM = vertexData[2].distance;
                 hL = vertexData[1].distance;
             }
-            
+
             //calculate the triangular cutting points with formulas from: https://gamasutra.com/view/news/237528/Water_interaction_model_for_boats_in_video_games.php
 
             //Point IM that cuts line H and M
@@ -222,7 +221,7 @@ public class ModifyUnderwaterMesh
 
 
     //swap function
-    private void OrderFunc (List<VertexD> vertexData,int i)
+    private void OrderFunc(List<VertexD> vertexData, int i)
     {
         float d1 = vertexData[i].distance;
         float d2 = vertexData[i + 1].distance;
@@ -234,35 +233,5 @@ public class ModifyUnderwaterMesh
             vertexData[i + 1] = help;
             swap = true;
         }
-    }
-
-    //TODO: EDIT dit NIET CTRL C + CTRL V
-    //Display the underwater mesh
-    public void DisplayMesh(Mesh mesh, string name, List<Triangle> trianglesP)  //REMOVE?
-    {
-        List<Vector3> vertices = new List<Vector3>(); //REMOVE?
-        List<int> triangles = new List<int>();        //REMOVE?
-
-        //Build the mesh
-        for (int i = 0; i < trianglesP.Count; i++)
-        {
-            //From world to local coordinates
-            Vector3 p1 = objTrans.InverseTransformPoint(trianglesP[i].p1);
-            Vector3 p2 = objTrans.InverseTransformPoint(trianglesP[i].p2);
-            Vector3 p3 = objTrans.InverseTransformPoint(trianglesP[i].p3);
-
-            vertices.Add(p1);
-            triangles.Add(vertices.Count - 1);
-            vertices.Add(p2);
-            triangles.Add(vertices.Count - 1);
-            vertices.Add(p3);
-            triangles.Add(vertices.Count - 1);
-        }
-               
-        mesh.Clear(); //Remove old mesh                
-        mesh.name = name; //Give it a name        
-        mesh.vertices = vertices.ToArray(); //Add the new vertices and triangles
-        mesh.triangles = triangles.ToArray(); //TODO check if naming correct?
-        mesh.RecalculateBounds();
     }
 }

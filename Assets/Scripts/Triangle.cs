@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
 public struct Triangle
 {
     //World cordinate position of triangle 1 , 2 , 3 
@@ -20,16 +19,16 @@ public struct Triangle
         this.p1 = p1;
         this.p2 = p2;
         this.p3 = p3;
-        
+
         this.center = (p1 + p2 + p3) / 3f;
         this.normal = Vector3.Cross(p2 - p1, p3 - p1).normalized;   //line p1->p2 , p1->p3 cross = normal.
-        this.distanceToSurface = Mathf.Abs(WaterController.currentWC.DistanceToWater(this.center));
+        this.distanceToSurface = Mathf.Abs(this.center.y);
 
         //calculation of area from: https://www.mathsisfun.com/geometry/herons-formula.html
         float a = Vector3.Distance(p1, p2);
         float b = Vector3.Distance(p1, p3);
         float c = Vector3.Distance(p2, p3);
         float s = (a + b + c) / 2;
-        this.area = Mathf.Sqrt(s * (s - a) * (s - b) * (s - c));   
+        this.area = Mathf.Sqrt(s * (s - a) * (s - b) * (s - c));
     }
 }
