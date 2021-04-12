@@ -50,7 +50,7 @@ public class ObjectBehaviour : MonoBehaviour
     private Vector3 BuoyancyFunc(float density, Triangle triangle)
     {
         //Buoyancy = density*g*V 
-        //V = fluid volume = TODO (can't find the formula)
+        //V = fluid volume
 
         V = triangle.distanceToSurface * triangle.area * triangle.normal;
         buoyancy = density * Physics.gravity.y * V;
